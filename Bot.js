@@ -1,12 +1,13 @@
 // ===========================================
-// DEEPSEEK AI CHATBOT - bot.js
+// GROQ AI CHATBOT - bot.js
+// Free, Fast, Smart!
 // ===========================================
 
-// YOUR DEEPSEEK API KEY - PASTE HERE!
-const DEEPSEEK_API_KEY = 'sk-1da76325ebb2436d8f953df92f61f1ba';
+// YOUR GROQ API KEY - PASTE HERE!
+const GROQ_API_KEY = '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';
 
-// DeepSeek API URL
-const API_URL = 'https://api.deepseek.com/v1/chat/completions';
+// Groq API URL (FREE!)
+const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Store conversation history per user
 let conversations = {};
@@ -23,16 +24,16 @@ const typing = document.getElementById('typing');
 const status = document.getElementById('status');
 
 // ===========================================
-// DEEPSEEK API CALL
+// GROQ API CALL (FREE!)
 // ===========================================
-async function callDeepSeek(userMessage, userId) {
+async function callGroq(userMessage, userId) {
     try {
         // Get or create conversation history for this user
         if (!conversations[userId]) {
             conversations[userId] = [];
         }
         
-        // Build messages for DeepSeek
+        // Build messages for Groq
         let messages = [
             {
                 role: "system",
@@ -40,8 +41,8 @@ async function callDeepSeek(userMessage, userId) {
             }
         ];
         
-        // Add conversation history (last 10 exchanges to save tokens)
-        const historyToUse = conversations[userId].slice(-20);
+        // Add conversation history (last 15 exchanges)
+        const historyToUse = conversations[userId].slice(-15);
         for (let msg of historyToUse) {
             messages.push({
                 role: msg.role,
@@ -57,7 +58,7 @@ async function callDeepSeek(userMessage, userId) {
         
         // Prepare request
         const requestBody = {
-            model: "deepseek-chat",
+            model: "llama-3.1-70b-versatile",  // FREE model
             messages: messages,
             temperature: 0.8,
             max_tokens: 500,
@@ -68,7 +69,7 @@ async function callDeepSeek(userMessage, userId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                'Authorization': `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify(requestBody)
         });
@@ -95,7 +96,7 @@ async function callDeepSeek(userMessage, userId) {
         return botReply;
         
     } catch (error) {
-        console.error('DeepSeek Error:', error);
+        console.error('Groq Error:', error);
         status.textContent = '⚠️ Using offline mode';
         return getFallbackResponse(userMessage);
     }
@@ -180,10 +181,10 @@ async function sendMessage() {
     status.textContent = `🧠 Thinking...`;
     
     try {
-        const response = await callDeepSeek(message, currentUserId);
+        const response = await callGroq(message, currentUserId);
         typing.classList.remove('active');
         addMessage(response, false);
-        status.textContent = `✅ DeepSeek AI • Online`;
+        status.textContent = `✅ Groq AI (Llama 3) • Free & Fast`;
     } catch (error) {
         typing.classList.remove('active');
         const fallback = getFallbackResponse(message);
@@ -196,12 +197,12 @@ async function sendMessage() {
 // CHECK API KEY
 // ===========================================
 function checkAPIKey() {
-    if (DEEPSEEK_API_KEY === 'YOUR_API_KEY_HERE') {
-        status.innerHTML = '⚠️ NEED API KEY! Go to: platform.deepseek.com';
+    if (GROQ_API_KEY === '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') {
+        status.innerHTML = '⚠️ NEED API KEY! Go to: console.groq.com';
         status.style.color = '#f97316';
-        addMessage("⚠️ Hey! I need my DeepSeek API key to work properly.\n\nPlease add it in bot.js! Go to **platform.deepseek.com** to get one for free.", false);
+        addMessage("⚠️ Hey! I need my Groq API key to work properly.\n\nPlease add it in bot.js! Go to **console.groq.com** to get one for free.", false);
     } else {
-        status.innerHTML = `✅ DeepSeek AI Ready • Free & Smart`;
+        status.innerHTML = `✅ Groq AI (Llama 3) • Free & Fast`;
         status.style.color = '#22c55e';
     }
 }
@@ -218,4 +219,4 @@ chatInput.addEventListener('keypress', (e) => {
 checkAPIKey();
 chatInput.focus();
 
-console.log('🤖 IA Bot Ready with DeepSeek! User ID:', currentUserId);
+console.log('🤖 IA Bot Ready with Groq! User ID:', currentUserId);
