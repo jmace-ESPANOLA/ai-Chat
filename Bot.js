@@ -4,9 +4,10 @@
 const GEMINI_API_KEY = 'AIzaSyBY6arSr8SbTwnC6dcE40rPasUh1vBoUys';
 
 // ===========================================
-// CONFIGURATION
+// CONFIGURATION - USING CORRECT MODEL
 // ===========================================
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Use gemini-1.5-flash instead (more stable)
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 // Store conversation history per user
 let conversations = {};
@@ -29,35 +30,39 @@ async function callGemini(userMessage, userId) {
     try {
         // Get or create conversation history for this user
         if (!conversations[userId]) {
-            conversations[userId] = [
-                {
-                    role: "user",
-                    parts: [{ text: "Hi! I'm ready to chat!" }]
-                },
-                {
-                    role: "model",
-                    parts: [{ text: "Hey there! 👋 I'm IA Bot! I'm here to help with anything you need - questions, advice, motivation, or just a chat. What's on your mind? 😊" }]
-                }
-            ];
+            conversations[userId] = [];
         }
         
-        // Add user message to history
-        conversations[userId].push({
+        // Build conversation history for Gemini format
+        let contents = [];
+        
+        // Add system instruction as first user message for context
+        contents.push({
+            role: "user",
+            parts: [{ text: "You are IA Bot, a friendly, helpful, and encouraging AI assistant. You are like a study buddy and life coach. You give short, helpful responses with emojis. You're warm and supportive. Keep responses under 3 sentences unless asked for more detail." }]
+        });
+        contents.push({
+            role: "model", 
+            parts: [{ text: "Hey there! 👋 I'm IA Bot! I'm here to help with anything you need - questions, advice, motivation, or just a chat. What's on your mind? 😊" }]
+        });
+        
+        // Add conversation history
+        for (let msg of conversations[userId]) {
+            contents.push({
+                role: msg.role,
+                parts: [{ text: msg.content }]
+            });
+        }
+        
+        // Add current user message
+        contents.push({
             role: "user",
             parts: [{ text: userMessage }]
         });
         
-        // Keep only last 20 messages
-        if (conversations[userId].length > 20) {
-            conversations[userId] = conversations[userId].slice(-20);
-        }
-        
         // Prepare request
         const requestBody = {
-            contents: conversations[userId],
-            system_instruction: {
-                parts: [{ text: "You are IA Bot, a friendly, helpful, and encouraging AI assistant. You are like a study buddy and life coach. You give short, helpful responses with emojis. You're warm and supportive. Keep responses under 3 sentences unless asked for more detail." }]
-            },
+            contents: contents,
             generationConfig: {
                 temperature: 0.8,
                 maxOutputTokens: 500,
@@ -82,11 +87,15 @@ async function callGemini(userMessage, userId) {
         const data = await response.json();
         const botReply = data.candidates[0]?.content?.parts[0]?.text || "Sorry, I couldn't process that. 😅";
         
-        // Add bot response to history
-        conversations[userId].push({
-            role: "model",
-            parts: [{ text: botReply }]
-        });
+        // Store in conversation history
+        if (!conversations[userId]) conversations[userId] = [];
+        conversations[userId].push({ role: "user", content: userMessage });
+        conversations[userId].push({ role: "model", content: botReply });
+        
+        // Keep only last 20 messages
+        if (conversations[userId].length > 20) {
+            conversations[userId] = conversations[userId].slice(-20);
+        }
         
         return botReply;
         
