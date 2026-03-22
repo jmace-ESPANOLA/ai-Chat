@@ -1,0 +1,5 @@
+// CONFIG FILE - DO NOT COMMIT TO GITHUB 
+const CONFIG = { 
+    GEMINI_API_KEY: 'AIzaSyAc9gwQS8_G-IOkzZts5vt8RSPiwSeF7jk' 
+}; 
+window.APP_CONFIG = CONFIG; 
