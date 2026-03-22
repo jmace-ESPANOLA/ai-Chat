@@ -35,6 +35,12 @@ const sendBtn = document.getElementById('sendBtn');
 const typing = document.getElementById('typing');
 const status = document.getElementById('status');
 
+console.log('🔍 DOM Elements found:', {
+    chatInput: !!chatInput,
+    sendBtn: !!sendBtn,
+    chatMessages: !!chatMessages
+});
+
 // ===========================================
 // REMINDER DETECTION (Smart Companion Feature)
 // ===========================================
@@ -50,7 +56,6 @@ function detectReminder(message) {
     for (let pattern of reminderPatterns) {
         const match = message.match(pattern.pattern);
         if (match && match[1]) {
-            // Extract time if mentioned
             let timePattern = /(?:at|on|for|in)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i;
             let timeMatch = message.match(timePattern);
             let reminderTime = timeMatch ? timeMatch[1] : null;
@@ -80,7 +85,6 @@ function saveReminder(userId, reminderText, time) {
     
     reminders[userId].push(reminder);
     
-    // Store in localStorage for persistence
     try {
         localStorage.setItem(`reminders_${userId}`, JSON.stringify(reminders[userId]));
     } catch(e) {
@@ -103,12 +107,11 @@ function loadReminders(userId) {
 }
 
 // ===========================================
-// ENHANCED FALLBACK RESPONSES (Smarter Offline Mode)
+// ENHANCED FALLBACK RESPONSES
 // ===========================================
 function getFallbackResponse(message) {
     const msg = message.toLowerCase();
     
-    // Context-aware responses
     if (msg.includes('remind') || msg.includes('reminder') || msg.includes('forget')) {
         const reminderDetect = detectReminder(message);
         if (reminderDetect.isReminder) {
@@ -137,7 +140,6 @@ function getFallbackResponse(message) {
         ]
     };
     
-    // Check for keywords
     if (msg.match(/^(hi|hello|hey|yo)/)) return fallbacks.greetings[Math.floor(Math.random() * fallbacks.greetings.length)];
     if (msg.match(/how are you|how are ya/)) return fallbacks.howAreYou[Math.floor(Math.random() * fallbacks.howAreYou.length)];
     if (msg.match(/thank|thanks|appreciate/)) return fallbacks.thanks[Math.floor(Math.random() * fallbacks.thanks.length)];
@@ -158,10 +160,9 @@ function getFallbackResponse(message) {
 }
 
 // ===========================================
-// FIXED GEMINI API CALL (No Errors!)
+// GEMINI API CALL
 // ===========================================
 async function callGemini(userMessage, userId) {
-    // If no API key, use fallback
     if (!GEMINI_API_KEY || !API_URL) {
         console.log('No API key - using offline mode');
         status.textContent = '📡 No API Key - Offline Mode';
@@ -169,15 +170,12 @@ async function callGemini(userMessage, userId) {
     }
     
     try {
-        // Initialize conversation if needed
         if (!conversations[userId]) {
             conversations[userId] = [];
         }
         
-        // Prepare the conversation properly
         const contents = [];
         
-        // Add system instruction as conversation start (compatible with all models)
         if (conversations[userId].length === 0) {
             contents.push({
                 role: "user",
@@ -189,7 +187,6 @@ async function callGemini(userMessage, userId) {
             });
         }
         
-        // Add conversation history
         for (let msg of conversations[userId]) {
             contents.push({
                 role: msg.role,
@@ -197,13 +194,11 @@ async function callGemini(userMessage, userId) {
             });
         }
         
-        // Add current user message
         contents.push({
             role: "user",
             parts: [{ text: userMessage }]
         });
         
-        // Limit conversation length (keep last 15 exchanges)
         while (contents.length > 17) {
             contents.splice(1, 1);
         }
@@ -225,7 +220,6 @@ async function callGemini(userMessage, userId) {
             body: JSON.stringify(requestBody)
         });
         
-        // Handle specific error codes
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('API Error:', errorData);
@@ -236,9 +230,6 @@ async function callGemini(userMessage, userId) {
             } else if (response.status === 403) {
                 status.textContent = '❌ Invalid API key! Check Google AI Studio';
                 return "🔑 My API key isn't working! Please check it in Google AI Studio and update the code.";
-            } else if (response.status === 400) {
-                status.textContent = '⚠️ Using offline mode';
-                return getFallbackResponse(userMessage);
             }
             
             return getFallbackResponse(userMessage);
@@ -246,11 +237,9 @@ async function callGemini(userMessage, userId) {
         
         const data = await response.json();
         
-        // Extract response properly
         if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
             const botReply = data.candidates[0].content.parts[0].text;
             
-            // Save to conversation history
             conversations[userId].push({
                 role: "user",
                 parts: [{ text: userMessage }]
@@ -274,15 +263,13 @@ async function callGemini(userMessage, userId) {
 }
 
 // ===========================================
-// ENHANCED UI FUNCTIONS
+// UI FUNCTIONS
 // ===========================================
 function addMessage(message, isUser) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
     
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    // Format message with emojis and line breaks
     const formattedMessage = message.replace(/\n/g, '<br>');
     
     messageDiv.innerHTML = `
@@ -293,9 +280,7 @@ function addMessage(message, isUser) {
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
-    // ===========================================
     // SEND RESPONSE TO REACT NATIVE APP
-    // ===========================================
     if (!isUser && (window.ReactNativeWebView || window.webkit || window.parent !== window)) {
         const responseData = {
             type: 'AI_RESPONSE',
@@ -304,17 +289,12 @@ function addMessage(message, isUser) {
             reminderText: (message.match(/remind you to "(.+?)"/) || message.match(/remind you to (.+?)(?:\!|\.|$)/))?.[1] || null
         };
         
-        // Send to React Native WebView
         if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(JSON.stringify(responseData));
             console.log('📱 Sent to React Native:', responseData);
-        }
-        // Send to iOS WebView
-        else if (window.webkit && window.webkit.messageHandlers) {
+        } else if (window.webkit && window.webkit.messageHandlers) {
             window.webkit.messageHandlers.app.postMessage(responseData);
-        }
-        // Send to iframe
-        else if (window.parent !== window) {
+        } else if (window.parent !== window) {
             window.parent.postMessage(responseData, '*');
         }
     }
@@ -331,11 +311,9 @@ async function sendMessage() {
     status.textContent = `🧠 Thinking...`;
     
     try {
-        // First check for reminders in the message
         const reminderCheck = detectReminder(message);
         
         if (reminderCheck.isReminder && !navigator.onLine) {
-            // Handle reminder offline
             const saved = saveReminder(currentUserId, reminderCheck.text, reminderCheck.time);
             typing.classList.remove('active');
             addMessage(`🔔 Got it! I'll remind you to "${reminderCheck.text}"${reminderCheck.time ? ` at ${reminderCheck.time}` : ''}. I'll save this for when we're back online! 💪`, false);
@@ -343,7 +321,6 @@ async function sendMessage() {
             return;
         }
         
-        // Get AI response
         const response = await callGemini(message, currentUserId);
         typing.classList.remove('active');
         addMessage(response, false);
@@ -356,12 +333,10 @@ async function sendMessage() {
         status.textContent = `⚠️ Offline Mode`;
     }
     
-    // Reset input height and focus
     chatInput.style.height = 'auto';
     chatInput.focus();
 }
 
-// Handle Enter key with Shift+Enter for new lines
 chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -369,15 +344,11 @@ chatInput.addEventListener('keydown', (e) => {
     }
 });
 
-// Auto-resize textarea
 chatInput.addEventListener('input', function() {
     this.style.height = 'auto';
     this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 
-// ===========================================
-// API KEY VALIDATION
-// ===========================================
 function checkAPIKey() {
     if (!GEMINI_API_KEY || GEMINI_API_KEY === '') {
         status.innerHTML = '⚠️ NEED API KEY! Get one free at: aistudio.google.com/apikey';
@@ -388,7 +359,6 @@ function checkAPIKey() {
         status.style.color = '#22c55e';
         addMessage("✨ **Hey there! I'm IA Bot, your smart companion!** ✨\n\nI can:\n💬 Chat with you naturally\n📝 Set and save reminders\n🎯 Give motivation & study tips\n🧠 Remember our conversations\n\nTry saying: **'remind me to...'** or just ask me anything!\n\nWhat would you like to talk about? 😊", false);
         
-        // Load saved reminders
         const savedReminders = loadReminders(currentUserId);
         if (savedReminders.length > 0) {
             setTimeout(() => {
@@ -398,9 +368,6 @@ function checkAPIKey() {
     }
 }
 
-// ===========================================
-// NETWORK STATUS HANDLER
-// ===========================================
 function updateNetworkStatus() {
     if (!navigator.onLine) {
         status.innerHTML = '📡 Offline Mode • Reminders will be saved';
@@ -417,49 +384,66 @@ window.addEventListener('offline', updateNetworkStatus);
 // ===========================================
 // LISTEN FOR MESSAGES FROM REACT NATIVE
 // ===========================================
+console.log('🔊 Registering sendMessage listener...');
+
+// Method 1: Custom event listener
 window.addEventListener('sendMessage', (event) => {
+    console.log('📱 sendMessage event FIRED!', event);
     const message = event.detail;
     if (message) {
-        console.log('📱 Received message from React Native:', message);
-        
-        // Wait a tiny bit for the page to be ready
-        setTimeout(() => {
-            // Try multiple ways to find the input and button
-            const input = document.getElementById('chatInput') || document.querySelector('input[type="text"]');
-            const sendBtn = document.getElementById('sendBtn') || document.querySelector('button.send-btn');
-            
-            if (input && sendBtn) {
-                // Set the value
-                input.value = message;
-                
-                // Trigger input event
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                
-                // Click the send button
-                sendBtn.click();
-                console.log('✅ Message sent to GitHub Chatbot:', message);
-            } else {
-                console.log('❌ Could not find input or button');
-                console.log('Input found:', !!input);
-                console.log('Send button found:', !!sendBtn);
-            }
-        }, 200);
+        handleIncomingMessage(message);
     }
 });
 
-// Also listen for custom event from WebView injection
-window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SEND_MESSAGE') {
-        console.log('📱 Received from React Native (postMessage):', event.data.message);
+// Method 2: Also expose a global function that React Native can call
+window.receiveMessageFromApp = function(message) {
+    console.log('📱 receiveMessageFromApp called with:', message);
+    handleIncomingMessage(message);
+};
+
+// Method 3: Check for a global variable set by React Native
+function checkForPendingMessage() {
+    if (window.pendingMessage) {
+        console.log('📱 Found pending message:', window.pendingMessage);
+        handleIncomingMessage(window.pendingMessage);
+        window.pendingMessage = null;
+    }
+}
+
+function handleIncomingMessage(message) {
+    console.log('📱 Processing message:', message);
+    
+    setTimeout(() => {
         const input = document.getElementById('chatInput');
         const sendBtn = document.getElementById('sendBtn');
+        
+        console.log('🔍 Elements found - Input:', !!input, 'SendBtn:', !!sendBtn);
+        
         if (input && sendBtn) {
-            input.value = event.data.message;
+            // Clear input first
+            input.value = '';
+            // Set new value
+            input.value = message;
+            // Trigger input event
             input.dispatchEvent(new Event('input', { bubbles: true }));
+            // Trigger change event
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Click the send button
             sendBtn.click();
+            console.log('✅ Message sent to GitHub Chatbot:', message);
+        } else {
+            console.log('❌ Could not find input or button');
+            console.log('Input element:', input);
+            console.log('Send button:', sendBtn);
         }
-    }
-});
+    }, 300);
+}
+
+// Check for pending message every second (for debugging)
+setInterval(checkForPendingMessage, 1000);
+
+console.log('🔊 All message listeners registered!');
 
 // ===========================================
 // INITIALIZE
@@ -468,9 +452,7 @@ checkAPIKey();
 updateNetworkStatus();
 chatInput.focus();
 
-// Test that the listener is registered
-console.log('🔊 sendMessage listener registered');
-
+console.log('🔊 sendMessage listener registered - READY!');
 console.log('🤖 IA Bot Ready! User ID:', currentUserId);
 console.log('💡 Tip: Say "remind me to..." to set reminders!');
 console.log('📱 React Native bridge active - ready to communicate!');
