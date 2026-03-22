@@ -421,8 +421,14 @@ window.addEventListener('sendMessage', (event) => {
     const message = event.detail;
     if (message) {
         console.log('📱 Received message from React Native:', message);
-        chatInput.value = message;
-        sendMessage();
+        const input = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        if (input && sendBtn) {
+            input.value = message;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            sendBtn.click();
+            console.log('✅ Message sent to GitHub Chatbot:', message);
+        }
     }
 });
 
@@ -430,8 +436,13 @@ window.addEventListener('sendMessage', (event) => {
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SEND_MESSAGE') {
         console.log('📱 Received from React Native (postMessage):', event.data.message);
-        chatInput.value = event.data.message;
-        sendMessage();
+        const input = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        if (input && sendBtn) {
+            input.value = event.data.message;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            sendBtn.click();
+        }
     }
 });
 
