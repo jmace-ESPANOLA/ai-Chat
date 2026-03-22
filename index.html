@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>IA Bot - Gemini AI Chatbot</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -14,13 +14,7 @@
         </div>
         
         <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
-                <div class="message-content">
-                    👋 Hi! I'm IA Bot, powered by Google Gemini AI.<br>
-                    I can chat, answer questions, give advice, and help you with anything!<br>
-                    What's on your mind? 😊
-                </div>
-            </div>
+            <!-- Messages will appear here -->
         </div>
         
         <div class="typing" id="typing">
@@ -28,7 +22,7 @@
         </div>
         
         <div class="status" id="status">
-            ✅ Gemini AI Ready • Free • Unlimited
+            ✅ Initializing...
         </div>
         
         <div class="chat-input-area">
@@ -36,7 +30,9 @@
             <button class="send-btn" id="sendBtn">Send</button>
         </div>
     </div>
+    
+    <!-- CONFIG FILE - MAKE SURE THIS EXISTS -->
     <script src="config.js"></script>
-    <script src="Bot.js"></script>
+    <script src="bot.js"></script>
 </body>
 </html>
