@@ -3,7 +3,6 @@
 // ===========================================
 let GEMINI_API_KEY = '';
 
-// Try to load from config file
 if (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.GEMINI_API_KEY) {
     GEMINI_API_KEY = window.APP_CONFIG.GEMINI_API_KEY;
     console.log('✅ API Key loaded from config');
@@ -12,16 +11,43 @@ if (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.GEMINI_API_KEY
 }
 
 // ===========================================
+// RATE LIMIT PROTECTION
+// ===========================================
+let lastRequestTime = 0;
+let isRateLimited = false;
+let rateLimitRetryTimeout = null;
+
+const MIN_DELAY_BETWEEN_REQUESTS = 3000; // 3 seconds between requests
+const RATE_LIMIT_WAIT_TIME = 10000; // 10 seconds wait if rate limited
+
+async function waitForRateLimit() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    
+    if (timeSinceLastRequest < MIN_DELAY_BETWEEN_REQUESTS) {
+        const waitTime = MIN_DELAY_BETWEEN_REQUESTS - timeSinceLastRequest;
+        console.log(`⏳ Rate limit protection: waiting ${waitTime}ms before next request`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    if (isRateLimited) {
+        console.log(`⚠️ Currently rate limited by Google, waiting...`);
+        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_WAIT_TIME));
+        isRateLimited = false;
+    }
+    
+    lastRequestTime = Date.now();
+}
+
+// ===========================================
 // CONFIGURATION
 // ===========================================
 const API_URL = GEMINI_API_KEY ? 
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}` : 
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}` : 
     null;
 
 // Store conversation history per user
 let conversations = {};
-
-// Store reminders per user
 let reminders = {};
 
 // Get user ID from URL or generate new
@@ -42,7 +68,17 @@ console.log('🔍 DOM Elements found:', {
 });
 
 // ===========================================
-// REMINDER DETECTION (Smart Companion Feature)
+// ADD INITIAL WELCOME MESSAGE
+// ===========================================
+function addInitialWelcome() {
+    if (chatMessages && chatMessages.children.length === 0) {
+        const welcomeMessage = "✨ **Hey there! I'm IA Bot, your smart companion!** ✨\n\nI can:\n💬 Chat with you naturally\n📝 Set and save reminders\n🎯 Give motivation & study tips\n🧠 Remember our conversations\n\nTry saying: **'remind me to...'** or just ask me anything!\n\nWhat would you like to talk about? 😊";
+        addMessage(welcomeMessage, false);
+    }
+}
+
+// ===========================================
+// REMINDER DETECTION
 // ===========================================
 function detectReminder(message) {
     const reminderPatterns = [
@@ -107,7 +143,7 @@ function loadReminders(userId) {
 }
 
 // ===========================================
-// ENHANCED FALLBACK RESPONSES
+// FALLBACK RESPONSES
 // ===========================================
 function getFallbackResponse(message) {
     const msg = message.toLowerCase();
@@ -126,33 +162,31 @@ function getFallbackResponse(message) {
         howAreYou: ["I'm doing great! 😊 How about you?", "Feeling awesome and ready to help! 💪", "I'm fantastic! Thanks for asking! 🌟"],
         thanks: ["You're welcome! 🙌 Happy to help!", "Anytime! 😊 That's what I'm here for!", "My pleasure! 💪"],
         goodbye: ["Take care! 👋 Come back anytime!", "See you later! 🌟 Stay awesome!", "Goodbye! 😊 Have a great day!"],
-        help: ["🤖 I'm IA Bot, your smart companion! I can:\n• Chat with you\n• Set reminders\n• Answer questions\n• Give motivation\n\nTry saying 'remind me to...' or ask me anything!"],
-        motivation: ["💪 You've got this! Every step counts!", "🌟 Keep going! You're doing amazing!", "🔥 Believe in yourself! You're capable of great things!"],
-        study: ["📚 Study tip: 25 mins focus, 5 mins break (Pomodoro)!", "🧠 Try active recall - it's scientifically proven to help memory!", "💡 Pro tip: Teach what you learn to someone else!"],
-        time: [`⏰ Current time: ${new Date().toLocaleTimeString()}`, "⌚ Time management is key! Want me to set a reminder?"],
-        weather: ["🌤️ I'd love to check the weather, but I'm offline right now!", "☔ Connect to internet and I can check the weather for you!"],
+        help: ["🤖 I'm IA Bot! I can chat, set reminders, answer questions, and give motivation. Try saying 'remind me to...' or ask me anything!"],
+        motivation: ["💪 You've got this! Every step counts!", "🌟 Keep going! You're doing amazing!", "🔥 Believe in yourself!"],
+        study: ["📚 Study tip: 25 mins focus, 5 mins break (Pomodoro)!", "🧠 Try active recall - it helps memory!", "💡 Pro tip: Teach what you learn to someone else!"],
+        time: [`⏰ Current time: ${new Date().toLocaleTimeString()}`],
         joke: ["😂 Why don't scientists trust atoms? Because they make up everything!", "🤣 What do you call a fake noodle? An impasta!"],
-        default: [
-            "That's interesting! 😊 Tell me more about it.",
-            "I see! 🤔 How can I help you with that?",
-            "Thanks for sharing! 💡 What else would you like to talk about?",
-            "Hmm, let me think about that... 🤔"
-        ]
+        rateLimit: ["⏳ I'm getting a lot of requests right now. Please wait a moment before sending another message. 😊"],
+        default: ["That's interesting! 😊 Tell me more.", "I see! 🤔 How can I help?", "Thanks for sharing! 💡"]
     };
     
+    if (isRateLimited) {
+        return fallbacks.rateLimit[0];
+    }
+    
     if (msg.match(/^(hi|hello|hey|yo)/)) return fallbacks.greetings[Math.floor(Math.random() * fallbacks.greetings.length)];
-    if (msg.match(/how are you|how are ya/)) return fallbacks.howAreYou[Math.floor(Math.random() * fallbacks.howAreYou.length)];
-    if (msg.match(/thank|thanks|appreciate/)) return fallbacks.thanks[Math.floor(Math.random() * fallbacks.thanks.length)];
-    if (msg.match(/bye|goodbye|see you|cya/)) return fallbacks.goodbye[Math.floor(Math.random() * fallbacks.goodbye.length)];
-    if (msg.match(/help|commands|what can you do/)) return fallbacks.help[0];
-    if (msg.match(/motivate|motivation|inspire|encourage/)) return fallbacks.motivation[Math.floor(Math.random() * fallbacks.motivation.length)];
-    if (msg.match(/study|learn|homework|exam|test/)) return fallbacks.study[Math.floor(Math.random() * fallbacks.study.length)];
-    if (msg.match(/time|clock/)) return fallbacks.time[Math.floor(Math.random() * fallbacks.time.length)];
-    if (msg.match(/weather|rain|sunny|storm/)) return fallbacks.weather[Math.floor(Math.random() * fallbacks.weather.length)];
-    if (msg.match(/joke|funny|laugh/)) return fallbacks.joke[Math.floor(Math.random() * fallbacks.joke.length)];
-    if (msg.match(/my reminders|show reminders|list reminders/)) {
+    if (msg.match(/how are you/)) return fallbacks.howAreYou[Math.floor(Math.random() * fallbacks.howAreYou.length)];
+    if (msg.match(/thank|thanks/)) return fallbacks.thanks[Math.floor(Math.random() * fallbacks.thanks.length)];
+    if (msg.match(/bye|goodbye/)) return fallbacks.goodbye[Math.floor(Math.random() * fallbacks.goodbye.length)];
+    if (msg.match(/help|what can you do/)) return fallbacks.help[0];
+    if (msg.match(/motivate|motivation/)) return fallbacks.motivation[Math.floor(Math.random() * fallbacks.motivation.length)];
+    if (msg.match(/study|learn/)) return fallbacks.study[Math.floor(Math.random() * fallbacks.study.length)];
+    if (msg.match(/time|clock/)) return fallbacks.time[0];
+    if (msg.match(/joke|funny/)) return fallbacks.joke[Math.floor(Math.random() * fallbacks.joke.length)];
+    if (msg.match(/my reminders|show reminders/)) {
         const userReminders = loadReminders(currentUserId);
-        if (userReminders.length === 0) return "📭 You don't have any reminders yet! Try saying 'remind me to...'";
+        if (userReminders.length === 0) return "📭 You don't have any reminders yet!";
         return `📋 Your reminders:\n${userReminders.map((r, i) => `${i+1}. ${r.text}${r.time !== 'later' ? ` (${r.time})` : ''}`).join('\n')}`;
     }
     
@@ -160,12 +194,15 @@ function getFallbackResponse(message) {
 }
 
 // ===========================================
-// GEMINI API CALL
+// GEMINI API CALL WITH RATE LIMIT PROTECTION
 // ===========================================
 async function callGemini(userMessage, userId) {
+    // Apply rate limit protection before making request
+    await waitForRateLimit();
+    
     if (!GEMINI_API_KEY || !API_URL) {
         console.log('No API key - using offline mode');
-        status.textContent = '📡 No API Key - Offline Mode';
+        if (status) status.textContent = '📡 No API Key - Offline Mode';
         return getFallbackResponse(userMessage);
     }
     
@@ -179,7 +216,7 @@ async function callGemini(userMessage, userId) {
         if (conversations[userId].length === 0) {
             contents.push({
                 role: "user",
-                parts: [{ text: "You are IA Bot, a friendly, helpful, and encouraging AI assistant. You give short, helpful responses with emojis. Keep responses under 3 sentences. Be warm and supportive. You can help set reminders too." }]
+                parts: [{ text: "You are IA Bot, a friendly, helpful, and encouraging AI assistant. Give short, helpful responses with emojis. Keep responses under 3 sentences. Be warm and supportive." }]
             });
             contents.push({
                 role: "model", 
@@ -220,16 +257,33 @@ async function callGemini(userMessage, userId) {
             body: JSON.stringify(requestBody)
         });
         
+        // Handle 429 Rate Limit
+        if (response.status === 429) {
+            console.warn('⚠️ Rate limit hit! Waiting 10 seconds...');
+            isRateLimited = true;
+            if (status) status.textContent = '⏳ Rate limit reached. Waiting 10 seconds...';
+            
+            // Show rate limit message to user
+            if (typing) typing.classList.remove('active');
+            addMessage("⏳ I'm getting a lot of requests right now. Please wait a moment before sending another message. 😊", false);
+            
+            // Wait for rate limit to reset
+            await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_WAIT_TIME));
+            isRateLimited = false;
+            
+            if (status) status.textContent = '✅ Retrying...';
+            
+            // Retry the request once
+            return callGemini(userMessage, userId);
+        }
+        
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('API Error:', errorData);
             
-            if (response.status === 429) {
-                status.textContent = '⚠️ Rate limit hit - using offline mode';
-                return getFallbackResponse(userMessage);
-            } else if (response.status === 403) {
-                status.textContent = '❌ Invalid API key! Check Google AI Studio';
-                return "🔑 My API key isn't working! Please check it in Google AI Studio and update the code.";
+            if (response.status === 403) {
+                if (status) status.textContent = '❌ Invalid API key!';
+                return "🔑 My API key isn't working! Please check it.";
             }
             
             return getFallbackResponse(userMessage);
@@ -257,15 +311,17 @@ async function callGemini(userMessage, userId) {
         
     } catch (error) {
         console.error('Network Error:', error);
-        status.textContent = '⚠️ No internet - offline mode';
+        if (status) status.textContent = '⚠️ No internet - offline mode';
         return getFallbackResponse(userMessage);
     }
 }
 
 // ===========================================
-// UI FUNCTIONS
+// ADD MESSAGE TO UI
 // ===========================================
 function addMessage(message, isUser) {
+    if (!chatMessages) return;
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
     
@@ -282,177 +338,173 @@ function addMessage(message, isUser) {
     
     // SEND RESPONSE TO REACT NATIVE APP
     if (!isUser && (window.ReactNativeWebView || window.webkit || window.parent !== window)) {
+        let reminderText = null;
+        
+        // Extract reminder text from response
+        const reminderMatch = message.match(/remind you to ["“](.+?)["”]/) || 
+                             message.match(/remind you to (.+?)(?:\!|\.|$)/);
+        if (reminderMatch) {
+            reminderText = reminderMatch[1].trim();
+        }
+        
         const responseData = {
             type: 'AI_RESPONSE',
             response: message,
-            isReminder: message.includes('remind') || message.includes('🔔') || message.includes('reminder'),
-            reminderText: (message.match(/remind you to "(.+?)"/) || message.match(/remind you to (.+?)(?:\!|\.|$)/))?.[1] || null
+            isReminder: message.includes('remind') || message.includes('🔔'),
+            reminderText: reminderText
         };
         
-        if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify(responseData));
-            console.log('📱 Sent to React Native:', responseData);
-        } else if (window.webkit && window.webkit.messageHandlers) {
-            window.webkit.messageHandlers.app.postMessage(responseData);
-        } else if (window.parent !== window) {
-            window.parent.postMessage(responseData, '*');
+        try {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify(responseData));
+                console.log('📱 Sent to React Native:', responseData.type);
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.app.postMessage(responseData);
+            } else if (window.parent !== window) {
+                window.parent.postMessage(responseData, '*');
+            }
+        } catch(e) {
+            console.log('Failed to send to React Native:', e);
         }
     }
 }
 
+// ===========================================
+// SEND MESSAGE FUNCTION
+// ===========================================
 async function sendMessage() {
+    if (!chatInput) return;
+    
     const message = chatInput.value.trim();
     if (!message) return;
     
+    // Prevent sending if currently rate limited
+    if (isRateLimited) {
+        addMessage("⏳ Please wait a moment. I'm still recovering from too many requests. Try again in a few seconds. 😊", false);
+        chatInput.value = '';
+        return;
+    }
+    
+    // Add user message to UI
     addMessage(message, true);
     chatInput.value = '';
     
-    typing.classList.add('active');
-    status.textContent = `🧠 Thinking...`;
+    // Show typing indicator
+    if (typing) typing.classList.add('active');
+    if (status) status.textContent = '🧠 Thinking...';
     
     try {
         const reminderCheck = detectReminder(message);
         
+        // Offline reminder handling
         if (reminderCheck.isReminder && !navigator.onLine) {
-            const saved = saveReminder(currentUserId, reminderCheck.text, reminderCheck.time);
-            typing.classList.remove('active');
+            saveReminder(currentUserId, reminderCheck.text, reminderCheck.time);
+            if (typing) typing.classList.remove('active');
             addMessage(`🔔 Got it! I'll remind you to "${reminderCheck.text}"${reminderCheck.time ? ` at ${reminderCheck.time}` : ''}. I'll save this for when we're back online! 💪`, false);
-            status.textContent = `📝 Reminder saved offline`;
+            if (status) status.textContent = '📝 Reminder saved offline';
             return;
         }
         
+        // Get response from Gemini or fallback
         const response = await callGemini(message, currentUserId);
-        typing.classList.remove('active');
+        
+        if (typing) typing.classList.remove('active');
         addMessage(response, false);
-        status.textContent = `✅ Gemini AI • Online`;
+        if (status) status.textContent = GEMINI_API_KEY ? '✅ Gemini AI • Online' : '📡 Offline Mode';
         
     } catch (error) {
-        typing.classList.remove('active');
+        console.error('Send message error:', error);
+        if (typing) typing.classList.remove('active');
         const fallback = getFallbackResponse(message);
         addMessage(fallback, false);
-        status.textContent = `⚠️ Offline Mode`;
+        if (status) status.textContent = '⚠️ Error - Using offline mode';
     }
     
+    // Auto-resize input
     chatInput.style.height = 'auto';
-    chatInput.focus();
+    if (chatInput) chatInput.focus();
 }
-
-chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
-
-chatInput.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-});
-
-function checkAPIKey() {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === '') {
-        status.innerHTML = '⚠️ NEED API KEY! Get one free at: aistudio.google.com/apikey';
-        status.style.color = '#f97316';
-        addMessage("🔑 **Welcome to IA Bot!**\n\nTo get started, you need a free Gemini API key:\n\n1. Go to **aistudio.google.com/apikey**\n2. Sign in with Google\n3. Click 'Create API Key'\n4. Copy your key and paste it in config.js\n\nIt's completely free! 🎉", false);
-    } else {
-        status.innerHTML = `✅ Gemini AI Ready • Free & Smart`;
-        status.style.color = '#22c55e';
-        addMessage("✨ **Hey there! I'm IA Bot, your smart companion!** ✨\n\nI can:\n💬 Chat with you naturally\n📝 Set and save reminders\n🎯 Give motivation & study tips\n🧠 Remember our conversations\n\nTry saying: **'remind me to...'** or just ask me anything!\n\nWhat would you like to talk about? 😊", false);
-        
-        const savedReminders = loadReminders(currentUserId);
-        if (savedReminders.length > 0) {
-            setTimeout(() => {
-                addMessage(`📋 I found ${savedReminders.length} saved reminder${savedReminders.length > 1 ? 's' : ''} for you! Say "show my reminders" to see them.`, false);
-            }, 1000);
-        }
-    }
-}
-
-function updateNetworkStatus() {
-    if (!navigator.onLine) {
-        status.innerHTML = '📡 Offline Mode • Reminders will be saved';
-        status.style.color = '#f97316';
-    } else if (GEMINI_API_KEY && GEMINI_API_KEY !== '') {
-        status.innerHTML = `✅ Gemini AI • Online`;
-        status.style.color = '#22c55e';
-    }
-}
-
-window.addEventListener('online', updateNetworkStatus);
-window.addEventListener('offline', updateNetworkStatus);
 
 // ===========================================
-// LISTEN FOR MESSAGES FROM REACT NATIVE
+// EVENT LISTENERS
+// ===========================================
+if (sendBtn) {
+    sendBtn.addEventListener('click', sendMessage);
+    console.log('✅ Send button listener attached');
+}
+
+if (chatInput) {
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    chatInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+}
+
+// ===========================================
+// REACT NATIVE MESSAGE HANDLER
 // ===========================================
 console.log('🔊 Registering sendMessage listener...');
 
-// Method 1: Custom event listener
 window.addEventListener('sendMessage', (event) => {
-    console.log('📱 sendMessage event FIRED!', event);
+    console.log('📱 sendMessage event FIRED!', event.detail);
     const message = event.detail;
     if (message) {
         handleIncomingMessage(message);
     }
 });
 
-// Method 2: Also expose a global function that React Native can call
 window.receiveMessageFromApp = function(message) {
     console.log('📱 receiveMessageFromApp called with:', message);
     handleIncomingMessage(message);
 };
 
-// Method 3: Check for a global variable set by React Native
-function checkForPendingMessage() {
-    if (window.pendingMessage) {
-        console.log('📱 Found pending message:', window.pendingMessage);
-        handleIncomingMessage(window.pendingMessage);
-        window.pendingMessage = null;
-    }
-}
-
 function handleIncomingMessage(message) {
-    console.log('📱 Processing message:', message);
+    console.log('📱 Processing incoming message:', message);
+    
+    // Check rate limit before processing
+    if (isRateLimited) {
+        console.log('⚠️ Rate limited, delaying incoming message');
+        setTimeout(() => handleIncomingMessage(message), RATE_LIMIT_WAIT_TIME);
+        return;
+    }
     
     setTimeout(() => {
-        const input = document.getElementById('chatInput');
-        const sendBtn = document.getElementById('sendBtn');
-        
-        console.log('🔍 Elements found - Input:', !!input, 'SendBtn:', !!sendBtn);
-        
-        if (input && sendBtn) {
-            // Clear input first
-            input.value = '';
-            // Set new value
-            input.value = message;
-            // Trigger input event
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            // Trigger change event
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            // Click the send button
+        if (chatInput && sendBtn) {
+            chatInput.value = message;
+            chatInput.dispatchEvent(new Event('input', { bubbles: true }));
             sendBtn.click();
-            console.log('✅ Message sent to GitHub Chatbot:', message);
+            console.log('✅ Message sent to chatbot:', message);
         } else {
             console.log('❌ Could not find input or button');
-            console.log('Input element:', input);
-            console.log('Send button:', sendBtn);
         }
     }, 300);
 }
 
-// Check for pending message every second (for debugging)
-setInterval(checkForPendingMessage, 1000);
-
-console.log('🔊 All message listeners registered!');
-
 // ===========================================
 // INITIALIZE
 // ===========================================
-checkAPIKey();
-updateNetworkStatus();
-chatInput.focus();
+function init() {
+    addInitialWelcome();
+    
+    if (status) {
+        if (GEMINI_API_KEY && GEMINI_API_KEY !== 'YOUR_API_KEY_HERE') {
+            status.innerHTML = '✅ Gemini AI Ready • Online';
+            status.style.color = '#22c55e';
+        } else {
+            status.innerHTML = '⚠️ Need API Key • Offline Mode Available';
+            status.style.color = '#f97316';
+        }
+    }
+    
+    console.log('🤖 IA Bot Ready! User ID:', currentUserId);
+    console.log('📱 React Native bridge active - ready to communicate!');
+}
 
-console.log('🔊 sendMessage listener registered - READY!');
-console.log('🤖 IA Bot Ready! User ID:', currentUserId);
-console.log('💡 Tip: Say "remind me to..." to set reminders!');
-console.log('📱 React Native bridge active - ready to communicate!');
+init();
