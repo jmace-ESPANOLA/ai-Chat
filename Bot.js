@@ -292,6 +292,32 @@ function addMessage(message, isUser) {
     
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // ===========================================
+    // SEND RESPONSE TO REACT NATIVE APP
+    // ===========================================
+    if (!isUser && (window.ReactNativeWebView || window.webkit || window.parent !== window)) {
+        const responseData = {
+            type: 'AI_RESPONSE',
+            response: message,
+            isReminder: message.includes('remind') || message.includes('🔔') || message.includes('reminder'),
+            reminderText: (message.match(/remind you to "(.+?)"/) || message.match(/remind you to (.+?)(?:\!|\.|$)/))?.[1] || null
+        };
+        
+        // Send to React Native WebView
+        if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify(responseData));
+            console.log('📱 Sent to React Native:', responseData);
+        }
+        // Send to iOS WebView
+        else if (window.webkit && window.webkit.messageHandlers) {
+            window.webkit.messageHandlers.app.postMessage(responseData);
+        }
+        // Send to iframe
+        else if (window.parent !== window) {
+            window.parent.postMessage(responseData, '*');
+        }
+    }
 }
 
 async function sendMessage() {
@@ -389,6 +415,27 @@ window.addEventListener('online', updateNetworkStatus);
 window.addEventListener('offline', updateNetworkStatus);
 
 // ===========================================
+// LISTEN FOR MESSAGES FROM REACT NATIVE
+// ===========================================
+window.addEventListener('sendMessage', (event) => {
+    const message = event.detail;
+    if (message) {
+        console.log('📱 Received message from React Native:', message);
+        chatInput.value = message;
+        sendMessage();
+    }
+});
+
+// Also listen for custom event from WebView injection
+window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SEND_MESSAGE') {
+        console.log('📱 Received from React Native (postMessage):', event.data.message);
+        chatInput.value = event.data.message;
+        sendMessage();
+    }
+});
+
+// ===========================================
 // INITIALIZE
 // ===========================================
 checkAPIKey();
@@ -397,3 +444,4 @@ chatInput.focus();
 
 console.log('🤖 IA Bot Ready! User ID:', currentUserId);
 console.log('💡 Tip: Say "remind me to..." to set reminders!');
+console.log('📱 React Native bridge active - ready to communicate!');
