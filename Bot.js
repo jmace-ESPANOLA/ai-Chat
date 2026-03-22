@@ -421,13 +421,25 @@ window.addEventListener('sendMessage', (event) => {
     const message = event.detail;
     if (message) {
         console.log('📱 Received message from React Native:', message);
-        const input = document.getElementById('chatInput');
-        const sendBtn = document.getElementById('sendBtn');
+        
+        // Try multiple ways to find the input and button
+        const input = document.getElementById('chatInput') || document.querySelector('input[type="text"]');
+        const sendBtn = document.getElementById('sendBtn') || document.querySelector('button.send-btn');
+        
         if (input && sendBtn) {
+            // Set the value
             input.value = message;
+            
+            // Trigger input event
             input.dispatchEvent(new Event('input', { bubbles: true }));
-            sendBtn.click();
-            console.log('✅ Message sent to GitHub Chatbot:', message);
+            
+            // Wait a tiny bit then click
+            setTimeout(() => {
+                sendBtn.click();
+                console.log('✅ Message sent to GitHub Chatbot:', message);
+            }, 50);
+        } else {
+            console.log('❌ Could not find input or button');
         }
     }
 });
