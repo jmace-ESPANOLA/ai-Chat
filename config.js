@@ -1,5 +1,11 @@
-// CONFIG FILE - DO NOT COMMIT TO GITHUB 
-const CONFIG = { 
-    GEMINI_API_KEY: 'AIzaSyAc9gwQS8_G-IOkzZts5vt8RSPiwSeF7jk' 
-}; 
-window.APP_CONFIG = CONFIG; 
+// ===========================================
+// GOOGLE GEMINI API CONFIGURATION
+// ===========================================
+// Get your free API key from: https://aistudio.google.com/apikey
+// Replace 'YOUR_API_KEY_HERE' with your actual API key
+
+window.APP_CONFIG = {
+    GEMINI_API_KEY: 'AIzaSyCsXkNsZNEykqzUSM5dKRmVzFWs7J6quzc'  // <--- PASTE YOUR API KEY HERE
+};
+
+console.log('✅ Config loaded. API Key present:', !!window.APP_CONFIG.GEMINI_API_KEY);
