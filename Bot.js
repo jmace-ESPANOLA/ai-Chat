@@ -422,25 +422,28 @@ window.addEventListener('sendMessage', (event) => {
     if (message) {
         console.log('📱 Received message from React Native:', message);
         
-        // Try multiple ways to find the input and button
-        const input = document.getElementById('chatInput') || document.querySelector('input[type="text"]');
-        const sendBtn = document.getElementById('sendBtn') || document.querySelector('button.send-btn');
-        
-        if (input && sendBtn) {
-            // Set the value
-            input.value = message;
+        // Wait a tiny bit for the page to be ready
+        setTimeout(() => {
+            // Try multiple ways to find the input and button
+            const input = document.getElementById('chatInput') || document.querySelector('input[type="text"]');
+            const sendBtn = document.getElementById('sendBtn') || document.querySelector('button.send-btn');
             
-            // Trigger input event
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            
-            // Wait a tiny bit then click
-            setTimeout(() => {
+            if (input && sendBtn) {
+                // Set the value
+                input.value = message;
+                
+                // Trigger input event
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Click the send button
                 sendBtn.click();
                 console.log('✅ Message sent to GitHub Chatbot:', message);
-            }, 50);
-        } else {
-            console.log('❌ Could not find input or button');
-        }
+            } else {
+                console.log('❌ Could not find input or button');
+                console.log('Input found:', !!input);
+                console.log('Send button found:', !!sendBtn);
+            }
+        }, 200);
     }
 });
 
@@ -464,6 +467,9 @@ window.addEventListener('message', (event) => {
 checkAPIKey();
 updateNetworkStatus();
 chatInput.focus();
+
+// Test that the listener is registered
+console.log('🔊 sendMessage listener registered');
 
 console.log('🤖 IA Bot Ready! User ID:', currentUserId);
 console.log('💡 Tip: Say "remind me to..." to set reminders!');
