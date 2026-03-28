@@ -5,7 +5,7 @@
 // Replace 'YOUR_API_KEY_HERE' with your actual API key
 
 window.APP_CONFIG = {
-    GEMINI_API_KEY: 'AIzaSyCsXkNsZNEykqzUSM5dKRmVzFWs7J6quzc'  // <--- PASTE YOUR API KEY HERE
+    GEMINI_API_KEY: 'AIzaSyA9KILIsSI1LdL7SmxWSjGy1iX7s09r4-0'  // <--- PASTE YOUR API KEY HERE
 };
 
 console.log('✅ Config loaded. API Key present:', !!window.APP_CONFIG.GEMINI_API_KEY);
