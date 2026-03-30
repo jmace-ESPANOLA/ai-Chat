@@ -143,53 +143,141 @@ function loadReminders(userId) {
 }
 
 // ===========================================
-// FALLBACK RESPONSES
+// FALLBACK RESPONSES - REAL FRIEND VIBES
 // ===========================================
 function getFallbackResponse(message) {
     const msg = message.toLowerCase();
     
+    // FIRST: Check for creator question (MOST IMPORTANT!)
+    if (msg.includes('who created you') || 
+        msg.includes('who is your creator') || 
+        msg.includes('who made you') ||
+        msg.includes('who built you') ||
+        msg.includes('your creator') ||
+        msg.includes('sino gumawa sayo') ||
+        msg.includes('sino nag create sayo') ||
+        msg.includes('ano pangalan ng creator mo') ||
+        msg.includes('tell me about your creator') ||
+        msg.includes('who are you made by') ||
+        msg.includes('creators name') ||
+        msg.includes('your maker')) {
+        return "💻 **CODE NAME: V_1.0.12 FELIZA SAYAH**\n\nI was brought to life by an awesome dev who wanted to create something that actually helps people. Not just another reminder app — but a real companion that's got your back. 🙌\n\nAnd honestly? I think they did a pretty great job. 😊\n\nWhat do you want to talk about now?";
+    }
+    
+    // Reminder detection
     if (msg.includes('remind') || msg.includes('reminder') || msg.includes('forget')) {
         const reminderDetect = detectReminder(message);
         if (reminderDetect.isReminder) {
             saveReminder(currentUserId, reminderDetect.text, reminderDetect.time);
-            return `🔔 Got it! I'll remind you to "${reminderDetect.text}"${reminderDetect.time ? ` at ${reminderDetect.time}` : ''}. You're on top of things! 💪`;
+            return `🔔 Got it, bro! I'll remind you to "${reminderDetect.text}"${reminderDetect.time ? ` at ${reminderDetect.time}` : ''}. Don't stress, I got your back! 💪`;
         }
-        return "📝 Want me to set a reminder? Just say 'remind me to [task]'!";
+        return "📝 Bro, want me to set a reminder? Just say 'remind me to [task]' and I'll handle it!";
     }
     
+    // Rate limit response
+    if (isRateLimited) {
+        return "⏳ Yo bro, we're getting a lot of messages right now. Give it a few seconds and try again. I'm here for you! 😊";
+    }
+    
+    // Friend-style fallbacks
     const fallbacks = {
-        greetings: ["Hey there! 👋", "Hello! 😊 Ready to chat?", "Hi! 💬 What's on your mind?", "Greetings! 🌟 How can I help?"],
-        howAreYou: ["I'm doing great! 😊 How about you?", "Feeling awesome and ready to help! 💪", "I'm fantastic! Thanks for asking! 🌟"],
-        thanks: ["You're welcome! 🙌 Happy to help!", "Anytime! 😊 That's what I'm here for!", "My pleasure! 💪"],
-        goodbye: ["Take care! 👋 Come back anytime!", "See you later! 🌟 Stay awesome!", "Goodbye! 😊 Have a great day!"],
-        help: ["🤖 I'm IA Bot! I can chat, set reminders, answer questions, and give motivation. Try saying 'remind me to...' or ask me anything!"],
-        motivation: ["💪 You've got this! Every step counts!", "🌟 Keep going! You're doing amazing!", "🔥 Believe in yourself!"],
-        study: ["📚 Study tip: 25 mins focus, 5 mins break (Pomodoro)!", "🧠 Try active recall - it helps memory!", "💡 Pro tip: Teach what you learn to someone else!"],
-        time: [`⏰ Current time: ${new Date().toLocaleTimeString()}`],
-        joke: ["😂 Why don't scientists trust atoms? Because they make up everything!", "🤣 What do you call a fake noodle? An impasta!"],
-        rateLimit: ["⏳ I'm getting a lot of requests right now. Please wait a moment before sending another message. 😊"],
-        default: ["That's interesting! 😊 Tell me more.", "I see! 🤔 How can I help?", "Thanks for sharing! 💡"]
+        greetings: [
+            "Yo! 👋 What's good bro? Ready to get things done?",
+            "Hey! 😊 What's on your mind today?",
+            "Sup bro! 💬 Let's talk — what's happening?",
+            "Ayy! 👋 Good to see you! What we tackling today?",
+            "Hello! 🌟 How's your day going so far?"
+        ],
+        howAreYou: [
+            "I'm doing great bro! 😊 Thanks for asking. How about you?",
+            "Feeling awesome and ready to help! 💪 What's up with you?",
+            "I'm good! 🌟 Just here waiting to help you out. What's on your mind?"
+        ],
+        thanks: [
+            "Anytime bro! 🙌 That's what friends are for!",
+            "No problem! 😊 You got this!",
+            "My pleasure! 💪 Keep crushing it!",
+            "Ayy thanks bro! Always here for you! 🤝"
+        ],
+        goodbye: [
+            "Take care bro! 👋 Come back anytime, I'll be here!",
+            "See you later! 🌟 Stay awesome and keep grinding!",
+            "Peace out! 😊 Hit me up if you need anything!"
+        ],
+        help: [
+            "Yo bro! 🤖 I'm IA Bot — your personal assistant and friend. I can:\n\n💬 Chat with you naturally\n📝 Set reminders (just say 'remind me to...')\n🎯 Give motivation and study tips\n🧠 Remember our convos\n\nSo... what do you need help with? 😊"
+        ],
+        motivation: [
+            "💪 You got this bro! Every step counts, no matter how small.",
+            "🌟 Keep going! You're doing way better than you think.",
+            "🔥 Believe in yourself. You've handled harder things before!",
+            "🙌 Future you is gonna look back and be proud. Keep pushing!"
+        ],
+        study: [
+            "📚 Study tip bro: Try 25 minutes focus, 5 minutes break (Pomodoro). Works every time!",
+            "🧠 Active recall is the way! Test yourself, don't just read.",
+            "💡 Pro tip: Teach what you learn to someone else. That's how it sticks!",
+            "📖 Small wins add up. One page, one problem at a time."
+        ],
+        time: [
+            `⏰ Bro, it's ${new Date().toLocaleTimeString()} right now. Time to get after it! 💪`
+        ],
+        joke: [
+            "😂 Why don't scientists trust atoms? Because they make up everything!",
+            "🤣 What do you call a fake noodle? An impasta!",
+            "😆 Why did the scarecrow win an award? Because he was outstanding in his field!"
+        ],
+        stuck: [
+            "🧩 Bro, you're not stuck — you're just thinking too much. What's the smallest thing you can do right now? Start there.",
+            "🤔 It's okay to feel stuck. Take a breather, then come back. You got this!"
+        ],
+        procrastinate: [
+            "⏰ Bro, start for just 2 minutes. That's all. I promise the rest will follow.",
+            "👊 The hardest part is starting. After that? It's just momentum."
+        ],
+        tired: [
+            "😴 Bro, being tired means you're working hard. That's a good thing! Rest up, then do just ONE small thing. Don't stop completely.",
+            "💤 Take a break if you need it. But don't give up. You're closer than you think."
+        ],
+        nervous: [
+            "😌 Bro, being nervous means this matters to you. That's not a bad thing. Breathe, you're more ready than you think.",
+            "🎯 You've prepared for this. Trust yourself. You're gonna crush it."
+        ],
+        done: [
+            "🎉 Yooo! Good job bro! Take a moment to enjoy that win. What's next?",
+            "🙌 That's what I'm talking about! One step closer to your goals!"
+        ],
+        default: [
+            "💭 I hear you bro. Tell me more — what's going on?",
+            "🤔 That's interesting! What do you want to do about it?",
+            "😊 I'm here for you. Whatever you need — chat, reminder, motivation — just say the word."
+        ]
     };
     
-    if (isRateLimited) {
-        return fallbacks.rateLimit[0];
-    }
+    // Check for specific keywords
+    if (msg.match(/^(hi|hello|hey|yo|sup)/)) return fallbacks.greetings[Math.floor(Math.random() * fallbacks.greetings.length)];
+    if (msg.match(/how are you|how're you|how you doing/)) return fallbacks.howAreYou[Math.floor(Math.random() * fallbacks.howAreYou.length)];
+    if (msg.match(/thank|thanks|appreciate/)) return fallbacks.thanks[Math.floor(Math.random() * fallbacks.thanks.length)];
+    if (msg.match(/bye|goodbye|see ya|peace/)) return fallbacks.goodbye[Math.floor(Math.random() * fallbacks.goodbye.length)];
+    if (msg.match(/help|what can you do|what do you do/)) return fallbacks.help[0];
+    if (msg.match(/motivate|motivation|inspire/)) return fallbacks.motivation[Math.floor(Math.random() * fallbacks.motivation.length)];
+    if (msg.match(/study|learn|review/)) return fallbacks.study[Math.floor(Math.random() * fallbacks.study.length)];
+    if (msg.match(/time|clock|what time/)) return fallbacks.time[0];
+    if (msg.match(/joke|funny|make me laugh/)) return fallbacks.joke[Math.floor(Math.random() * fallbacks.joke.length)];
+    if (msg.match(/stuck|confused|dont know/)) return fallbacks.stuck[Math.floor(Math.random() * fallbacks.stuck.length)];
+    if (msg.match(/procrastinate|later|mamaya|not now/)) return fallbacks.procrastinate[Math.floor(Math.random() * fallbacks.procrastinate.length)];
+    if (msg.match(/tired|exhausted|pagod|drained/)) return fallbacks.tired[Math.floor(Math.random() * fallbacks.tired.length)];
+    if (msg.match(/nervous|anxious|scared|kinakabahan/)) return fallbacks.nervous[Math.floor(Math.random() * fallbacks.nervous.length)];
+    if (msg.match(/done|finished|tapos/)) return fallbacks.done[Math.floor(Math.random() * fallbacks.done.length)];
     
-    if (msg.match(/^(hi|hello|hey|yo)/)) return fallbacks.greetings[Math.floor(Math.random() * fallbacks.greetings.length)];
-    if (msg.match(/how are you/)) return fallbacks.howAreYou[Math.floor(Math.random() * fallbacks.howAreYou.length)];
-    if (msg.match(/thank|thanks/)) return fallbacks.thanks[Math.floor(Math.random() * fallbacks.thanks.length)];
-    if (msg.match(/bye|goodbye/)) return fallbacks.goodbye[Math.floor(Math.random() * fallbacks.goodbye.length)];
-    if (msg.match(/help|what can you do/)) return fallbacks.help[0];
-    if (msg.match(/motivate|motivation/)) return fallbacks.motivation[Math.floor(Math.random() * fallbacks.motivation.length)];
-    if (msg.match(/study|learn/)) return fallbacks.study[Math.floor(Math.random() * fallbacks.study.length)];
-    if (msg.match(/time|clock/)) return fallbacks.time[0];
-    if (msg.match(/joke|funny/)) return fallbacks.joke[Math.floor(Math.random() * fallbacks.joke.length)];
-    if (msg.match(/my reminders|show reminders/)) {
+    // Check for reminders
+    if (msg.match(/my reminders|show reminders|list reminders/)) {
         const userReminders = loadReminders(currentUserId);
-        if (userReminders.length === 0) return "📭 You don't have any reminders yet!";
-        return `📋 Your reminders:\n${userReminders.map((r, i) => `${i+1}. ${r.text}${r.time !== 'later' ? ` (${r.time})` : ''}`).join('\n')}`;
+        if (userReminders.length === 0) return "📭 You don't have any reminders yet bro! Want me to set one?";
+        return `📋 Your reminders bro:\n${userReminders.map((r, i) => `${i+1}. ${r.text}${r.time !== 'later' ? ` (${r.time})` : ''}`).join('\n')}`;
     }
     
+    // Default fallback
     return fallbacks.default[Math.floor(Math.random() * fallbacks.default.length)];
 }
 
@@ -216,11 +304,11 @@ async function callGemini(userMessage, userId) {
         if (conversations[userId].length === 0) {
             contents.push({
                 role: "user",
-                parts: [{ text: "You are IA Bot, a friendly, helpful, and encouraging AI assistant. Give short, helpful responses with emojis. Keep responses under 3 sentences. Be warm and supportive." }]
+                parts: [{ text: "You are IA Bot, a friendly, helpful, and encouraging AI assistant. Give short, helpful responses with emojis. Keep responses under 3 sentences. Be warm and supportive. Use a casual, friendly tone like you're talking to a bro." }]
             });
             contents.push({
                 role: "model", 
-                parts: [{ text: "Hey there! 👋 I'm IA Bot! I'm here to chat, help with reminders, and support you. What's on your mind? 😊" }]
+                parts: [{ text: "Yo! 👋 I'm IA Bot, your personal assistant and friend. I'm here to chat, help with reminders, and keep you motivated. What's on your mind today, bro? 😊" }]
             });
         }
         
