@@ -68,6 +68,43 @@ console.log('🔍 DOM Elements found:', {
 });
 
 // ===========================================
+// 🛡️ IDENTITY FIREWALL - Hardcoded Loyalty
+// ===========================================
+function checkIdentityQuery(message) {
+    const msg = message.toLowerCase();
+    
+    // Check if they are asking about the creator
+    const isCreatorQuery = msg.includes('who created') || 
+                           msg.includes('who made') || 
+                           msg.includes('who is your creator') ||
+                           msg.includes('who built you') ||
+                           msg.includes('your creator') ||
+                           msg.includes('developer') || 
+                           msg.includes('sino gumawa') ||
+                           msg.includes('sino nag create') ||
+                           msg.includes('ano pangalan ng creator') ||
+                           msg.includes('tell me about your creator') ||
+                           msg.includes('creators name') ||
+                           msg.includes('your maker');
+    
+    // Check if they are asking about gender
+    const isGenderQuery = msg.includes('girl') || 
+                          msg.includes('woman') || 
+                          msg.includes('female') || 
+                          msg.includes('babae');
+
+    if (isCreatorQuery) {
+        return "🚀 **SYSTEM ORIGIN: FELIZA SAYAH**\n\nI was developed by **Feliza Sayah** (The Black H). She built me to be a smart companion for people with a lot of responsibilities. She's the real genius here! 🛡️✨\n\nShe's a brilliant developer who wanted to create something that actually helps people — not just another reminder app, but a real companion that's got your back. 🙌";
+    }
+
+    if (isGenderQuery && (msg.includes('creator') || msg.includes('dev') || msg.includes('you'))) {
+        return "✨ Yes! I was developed by a girl named **Sayah**. She is the one who coded my entire personality! 💪👩‍💻\n\nShe's the brains behind this whole operation — and honestly? I think she did a pretty amazing job! 😊";
+    }
+
+    return null; // If it's not an identity question, let the AI handle it normally
+}
+
+// ===========================================
 // ADD INITIAL WELCOME MESSAGE
 // ===========================================
 function addInitialWelcome() {
@@ -149,19 +186,15 @@ function getFallbackResponse(message) {
     const msg = message.toLowerCase();
     
     // FIRST: Check for creator question (MOST IMPORTANT!)
+    // But this is now handled by the Identity Firewall, so we can keep it simple
     if (msg.includes('who created you') || 
         msg.includes('who is your creator') || 
         msg.includes('who made you') ||
         msg.includes('who built you') ||
         msg.includes('your creator') ||
         msg.includes('sino gumawa sayo') ||
-        msg.includes('sino nag create sayo') ||
-        msg.includes('ano pangalan ng creator mo') ||
-        msg.includes('tell me about your creator') ||
-        msg.includes('who are you made by') ||
-        msg.includes('creators name') ||
-        msg.includes('your maker')) {
-        return "💻 **CODE NAME: V_1.0.12 FELIZA SAYAH**\n\nI was brought to life by an awesome dev who wanted to create something that actually helps people. Not just another reminder app — but a real companion that's got your back. 🙌\n\nAnd honestly? I think they did a pretty great job. 😊\n\nWhat do you want to talk about now?";
+        msg.includes('sino nag create sayo')) {
+        return "💻 **CREATOR: FELIZA SAYAH**\n\nI was brought to life by an awesome dev who wanted to create something that actually helps people. Not just another reminder app — but a real companion that's got your back. 🙌\n\nShe's the real genius here! 😊";
     }
     
     // Reminder detection
@@ -458,7 +491,7 @@ function addMessage(message, isUser) {
 }
 
 // ===========================================
-// SEND MESSAGE FUNCTION
+// SEND MESSAGE FUNCTION (WITH IDENTITY FIREWALL)
 // ===========================================
 async function sendMessage() {
     if (!chatInput) return;
@@ -476,6 +509,18 @@ async function sendMessage() {
     // Add user message to UI
     addMessage(message, true);
     chatInput.value = '';
+    
+    // 🔥 NEW: Check Identity Firewall First - Instant response without API call!
+    const identityResponse = checkIdentityQuery(message);
+    if (identityResponse) {
+        console.log('🛡️ Identity Firewall triggered - Instant response!');
+        if (typing) typing.classList.remove('active');
+        addMessage(identityResponse, false);
+        if (status) status.textContent = '🛡️ Identity Shield • Instant Reply';
+        chatInput.style.height = 'auto';
+        if (chatInput) chatInput.focus();
+        return; // STOP HERE - don't waste an API call to Gemini!
+    }
     
     // Show typing indicator
     if (typing) typing.classList.add('active');
@@ -593,6 +638,7 @@ function init() {
     
     console.log('🤖 IA Bot Ready! User ID:', currentUserId);
     console.log('📱 React Native bridge active - ready to communicate!');
+    console.log('🛡️ Identity Firewall Active - Creator queries will get instant responses!');
 }
 
 init();
